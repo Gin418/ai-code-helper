@@ -2,7 +2,6 @@ package com.example.aicodehelper.config;
 
 import dev.langchain4j.community.model.dashscope.QwenChatModel;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 
 import java.util.List;
@@ -13,7 +12,7 @@ import java.util.List;
  * @Date 2026/5/22 14:53
  * @Version 1.0.0
  **/
-@Configuration
+//@Configuration
 public class QwenChatConfig {
 
     @Bean

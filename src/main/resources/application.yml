@@ -9,3 +9,6 @@ langchain4j:
       chat-model:
         api-key: ${qwen.api-key}
         model-name: ${qwen.model-name}
+      embedding-model:
+        model-name: ${embedding-model.name}
+        api-key: ${embedding-model..api-key}
