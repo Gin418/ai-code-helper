@@ -28,11 +28,6 @@ public class MilvusConfig {
     private EmbeddingListen embeddingListen;
 
     @Bean
-    public InvocationContext invocationContext() {
-        return InvocationContext.builder().build();
-    }
-
-    @Bean
     public MilvusServiceClient milvusServiceClient() {
         return new MilvusServiceClient(
                 ConnectParam.newBuilder()
