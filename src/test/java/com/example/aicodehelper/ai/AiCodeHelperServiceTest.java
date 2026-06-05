@@ -1,5 +1,6 @@
 package com.example.aicodehelper.ai;
 
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
@@ -14,17 +15,17 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.service.Result;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
-import dev.langchain4j.store.embedding.milvus.MilvusEmbeddingStore;
+import dev.langchain4j.store.embedding.EmbeddingStore;
 import io.milvus.client.MilvusServiceClient;
-import io.milvus.common.clientenum.ConsistencyLevelEnum;
-import io.milvus.param.IndexType;
-import io.milvus.param.MetricType;
 import io.milvus.param.R;
 import io.milvus.param.highlevel.collection.ListCollectionsParam;
 import io.milvus.param.highlevel.collection.response.ListCollectionsResponse;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+
+import java.util.HashMap;
+import java.util.Map;
 
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 
@@ -37,6 +38,8 @@ class AiCodeHelperServiceTest {
     private EmbeddingModel embeddingModel;
     @Resource
     private MilvusServiceClient milvusServiceClient;
+    @Resource
+    private EmbeddingStore<TextSegment> embeddingStore;
 
     @Test
     void chat() {
@@ -138,32 +141,38 @@ class AiCodeHelperServiceTest {
 //                .withCollectionName("example_collection")
 //                .build();
 //        customMilvusClient.dropCollection(requestParam);
-        MilvusEmbeddingStore store = MilvusEmbeddingStore.builder()
-                .milvusClient(milvusServiceClient)                            // Port for Milvus instance
-                .collectionName("example_collection")      // Name of the collection
-                .dimension(1024)                            // Dimension of vectors
-                .indexType(IndexType.FLAT)                 // Index type
-                .metricType(MetricType.COSINE)             // Metric type
-                .username("username")                      // Username for Milvus
-                .password("password")                      // Password for Milvus
-                .consistencyLevel(ConsistencyLevelEnum.EVENTUALLY)  // Consistency level
-                .autoFlushOnInsert(true)                   // Auto flush after insert
-                .idFieldName("id")                         // ID field name
-                .textFieldName("text")                     // Text field name
-                .metadataFieldName("metadata")             // Metadata field name
-                .vectorFieldName("vector")                 // Vector field name
-                .build();
-        Embedding embedding = embeddingModel.embed("狗是好吃的").content();
-        store.add("狗是好吃的", embedding);
+//        MilvusEmbeddingStore store = MilvusEmbeddingStore.builder()
+//                .milvusClient(milvusServiceClient)                            // Port for Milvus instance
+//                .collectionName("example_collection")      // Name of the collection
+//                .dimension(1024)                            // Dimension of vectors
+//                .indexType(IndexType.FLAT)                 // Index type
+//                .metricType(MetricType.COSINE)             // Metric type
+//                .username("username")                      // Username for Milvus
+//                .password("password")                      // Password for Milvus
+//                .consistencyLevel(ConsistencyLevelEnum.EVENTUALLY)  // Consistency level
+//                .autoFlushOnInsert(true)                   // Auto flush after insert
+//                .idFieldName("id")                         // ID field name
+//                .textFieldName("text")                     // Text field name
+//                .metadataFieldName("metadata")             // Metadata field name
+//                .vectorFieldName("vector")                 // Vector field name
+//                .build();
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("title", "Java教程");
+        metadata.put("userId", 123);
+        metadata.put("category", "tech");
+        Embedding embedding = embeddingModel.embed(TextSegment.from("Milvus 是专门用来存“AI 向量”的数据库", new Metadata(metadata))).content();
+        embeddingStore.add(embedding, TextSegment.from("Milvus 是专门用来存“AI 向量”的数据库", new Metadata(metadata)));
         Embedding queryEmbedding =
-                embeddingModel.embed("你喜欢什么食物吗").content();
+                embeddingModel.embed("milvus 是什么").content();
         EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
                 .queryEmbedding(queryEmbedding)
                 .maxResults(5)
                 .minScore(0.75)
                 .build();
-        EmbeddingSearchResult<TextSegment> search = store.search(request);
+        EmbeddingSearchResult<TextSegment> search = embeddingStore.search(request);
         System.out.println(search.matches());
+        Result<String> result = aiCodeHelperService.chatWithRag("milvus 是什么");
+        System.out.println(result.content());
 
         // 1. Connect to Milvus server
 //        ConnectConfig connectConfig = ConnectConfig.builder()
@@ -171,8 +180,6 @@ class AiCodeHelperServiceTest {
 //                .build();
 //
 //        MilvusClientV2 client = new MilvusClientV2(connectConfig);
-//        ListCollectionsResp resp = client.listCollections();
-//        System.out.println(resp);
 //        // 3. Create a collection in customized setup mode
 //
 //        // 3.1 Create schema
@@ -180,40 +187,44 @@ class AiCodeHelperServiceTest {
 //
 //        // 3.2 Add fields to schema
 //        schema.addField(AddFieldReq.builder()
-//                .fieldName("my_id")
-//                .dataType(DataType.Int64)
+//                .fieldName("id")
+//                .dataType(DataType.VarChar)
 //                .isPrimaryKey(true)
-//                .autoID(false)
+//                .maxLength(36)
 //                .build());
 //
 //        schema.addField(AddFieldReq.builder()
-//                .fieldName("my_vector")
+//                .fieldName("vector")
 //                .dataType(DataType.FloatVector)
-//                .dimension(5)
+//                .dimension(1024)
 //                .build());
 //
 //        schema.addField(AddFieldReq.builder()
-//                .fieldName("my_varchar")
+//                .fieldName("text")
 //                .dataType(DataType.VarChar)
 //                .maxLength(512)
 //                .build());
-//        // 3.3 Prepare index parameters
-//        IndexParam indexParamForIdField = IndexParam.builder()
-//                .fieldName("my_id")
-//                .indexType(IndexParam.IndexType.AUTOINDEX)
-//                .build();
+//        schema.addField(AddFieldReq.builder()
+//                .fieldName("metadata")
+//                .dataType(DataType.JSON)
+//                .build());
+////         3.3 Prepare index parameters
+////        IndexParam indexParamForIdField = IndexParam.builder()
+////                .fieldName("id")
+////                .indexType(IndexParam.IndexType.AUTOINDEX)
+////                .build();
 //
 //        IndexParam indexParamForVectorField = IndexParam.builder()
-//                .fieldName("my_vector")
+//                .fieldName("vector")
 //                .indexType(IndexParam.IndexType.AUTOINDEX)
 //                .metricType(IndexParam.MetricType.COSINE)
 //                .build();
 //
 //        List<IndexParam> indexParams = new ArrayList<>();
-//        indexParams.add(indexParamForIdField);
+////        indexParams.add(indexParamForIdField);
 //        indexParams.add(indexParamForVectorField);
 //        CreateCollectionReq customizedSetupReq1 = CreateCollectionReq.builder()
-//                .collectionName("customized_setup_2")
+//                .collectionName("my_db")
 //                .collectionSchema(schema)
 //                .indexParams(indexParams)
 //                .build();
@@ -222,12 +233,48 @@ class AiCodeHelperServiceTest {
 //
 //        // 3.5 Get load state of the collection
 //        GetLoadStateReq customSetupLoadStateReq1 = GetLoadStateReq.builder()
-//                .collectionName("customized_setup_2")
+//                .collectionName("my_db")
 //                .build();
 //
 //        Boolean loaded = client.getLoadState(customSetupLoadStateReq1);
 //        ListCollectionsResp resp = client.listCollections();
 //        System.out.println(resp.getCollectionNames());
 //        System.out.println(loaded);
+//
+//        Map<String, Object> data = new HashMap<>();
+//        Map<String, Object> metadata = new HashMap<>();
+//        metadata.put("title", "Java教程");
+//        metadata.put("userId", 123);
+//        metadata.put("category", "tech");
+//        data.put("text", "跑步锻炼身体");
+//        data.put("vector", embeddingModel.embed(TextSegment.from("跑步锻炼身体", new Metadata(metadata))).content().vector());
+//        data.put("id", UUID.randomUUID());
+//        data.put("metadata", metadata);
+//
+//        Gson gson = new Gson();
+//        JsonObject jsonObject = gson.toJsonTree(data).getAsJsonObject();
+//        InsertReq insertReq = InsertReq.builder()
+//                .collectionName("my_db")
+//                .data(List.of(jsonObject))
+//                .build();
+//        InsertResp insertResp = client.insert(insertReq);
+//        System.out.println(insertResp);
+//        QueryReq queryReq = QueryReq.builder()
+//                .collectionName("my_db")
+//                .filter("id in ['1','2','3','4']")
+//                .outputFields(List.of("id", "text"))
+//                .build();
+//
+//        QueryResp queryResp = client.query(queryReq);
+//        System.out.println(queryResp.getQueryResults().size());
+//
+//        SearchReq searchReq = SearchReq.builder()
+//                .collectionName("my_db")
+//                .data(List.of(new FloatVec(embeddingModel.embed(TextSegment.from("你爱什么运动")).content().vector())))
+//                .topK(5)
+//                .outputFields(List.of("text", "metadata", "id"))
+//                .build();
+//        SearchResp searchResp = client.search(searchReq);
+//        System.out.println(searchResp);
     }
 }

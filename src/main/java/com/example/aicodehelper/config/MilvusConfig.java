@@ -49,7 +49,7 @@ public class MilvusConfig {
     public EmbeddingStore<TextSegment> embeddingStore(MilvusServiceClient milvusServiceClient) {
         return MilvusEmbeddingStore.builder()
                 .milvusClient(milvusServiceClient)                            // Port for Milvus instance
-                .collectionName("example2_collection")      // Name of the collection
+                .collectionName("example_collection")      // Name of the collection
                 .dimension(1024)                            // Dimension of vectors
                 .indexType(IndexType.FLAT)                 // Index type
                 .metricType(MetricType.COSINE)             // Metric type
