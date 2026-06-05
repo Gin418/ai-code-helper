@@ -2,7 +2,6 @@ package com.example.aicodehelper.config;
 
 import com.example.aicodehelper.ai.llistener.EmbeddingListen;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.milvus.MilvusEmbeddingStore;
@@ -11,7 +10,7 @@ import io.milvus.common.clientenum.ConsistencyLevelEnum;
 import io.milvus.param.ConnectParam;
 import io.milvus.param.IndexType;
 import io.milvus.param.MetricType;
-import jakarta.annotation.Resource;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -24,14 +23,14 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class MilvusConfig {
 
-    @Resource
-    private EmbeddingListen embeddingListen;
+    @Value("${milvus.uri}")
+    private String uri;
 
     @Bean
     public MilvusServiceClient milvusServiceClient() {
         return new MilvusServiceClient(
                 ConnectParam.newBuilder()
-                        .withHost("192.168.111.131")
+                        .withHost(uri)
                         .withPort(19530)
                         .build()
         );
@@ -42,7 +41,7 @@ public class MilvusConfig {
     }
 
     @Bean
-    public EmbeddingModel embeddingModel(EmbeddingModel model) {
+    public EmbeddingModel embeddingModel(EmbeddingModel model, EmbeddingListen embeddingListen) {
         return model.addListener(embeddingListen);
     }
 
